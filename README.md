@@ -55,7 +55,7 @@ Capstone_ai/
 
 ---
 
-## 🤖 AI 모델 구조
+## AI 모델 구조
 
 | 단계 | 모델 | 역할 |
 |------|------|------|
@@ -64,6 +64,8 @@ Capstone_ai/
 | 2차 분류 | Logistic Regression (Domain별) | 31개 Intent 분류 |
 | 요약/추출 | GPT-4o-mini | 이메일 요약 / 일정 추출 |
 | 답장 생성 | Claude 3.5 Sonnet | 답장 템플릿 초안 생성 |
+
+---
 
 ### Domain / Intent 구조
 
