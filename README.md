@@ -2,7 +2,6 @@
 
 > 캡스톤 디자인 프로젝트 — AI 기반 업무 이메일 자동 분류 및 응답 자동화 서비스
 
-- 저는 현재 AI를 맡고 있으며, MLOps까지 진행할 예정입니다.
 ---
 
 ## 프로젝트 개요
@@ -25,32 +24,6 @@ Gmail API
     - GPT   : 이메일 요약 / 일정 추출
     - Claude : 답장 템플릿 초안 생성
   → Google Calendar 등록 후보 생성
-```
-
----
-
-## 폴더 구조
-```
-Capstone_ai/
-├── notebooks/
-│   └── project.ipynb       # 전체 파이프라인 실행 노트북
-├── src/
-│   ├── config.py           # 경로 및 하이퍼파라미터 설정
-│   ├── data_utils.py       # 데이터 로드 / Pair 생성
-│   ├── train_sbert.py      # SBERT Fine-tuning / 임베딩 생성
-│   ├── train_domain.py     # Domain 분류기 학습
-│   ├── train_intent.py     # Intent 분류기 학습
-│   ├── evaluation.py       # F1 / Confusion Matrix 평가
-│   └── inference.py        # 추론 파이프라인
-├── data/                   # 데이터 저장 (gitignore)
-├── models/                 # 학습된 모델 저장 (gitignore)
-├── outputs/
-│   ├── figures/            # Confusion Matrix 이미지
-│   ├── reports/            # 평가 리포트
-│   └── logs/               # 학습 로그
-├── .gitignore
-├── requirements.txt
-└── README.md
 ```
 
 ---
