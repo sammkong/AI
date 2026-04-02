@@ -10,7 +10,7 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-MOCK_MODE = True
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 
 def _get_client() -> anthropic.Anthropic:

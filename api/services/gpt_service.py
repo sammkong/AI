@@ -13,7 +13,7 @@ load_dotenv()
 
 # ── Mock 모드 설정 ───────────────────────────────────────────
 # 테스트 시 True, 실제 호출 시 False
-MOCK_MODE = True
+MOCK_MODE = os.getenv("MOCK_MODE", "false").lower() == "true"
 
 
 # ── OpenAI 클라이언트 초기화 ─────────────────────────────────
