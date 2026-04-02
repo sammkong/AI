@@ -26,7 +26,7 @@ async def lifespan(app: FastAPI):
         "model"  : model,
         "predict": predict_email,   # 함수도 같이 저장
     }
-    print("[Startup] 파이프라인 로드 완료 ✅")
+    print("[Startup] 파이프라인 로드 완료")
 
     yield  # 서버 실행 중
 

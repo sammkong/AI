@@ -34,3 +34,8 @@ api/__pycache__/
 .venv/
 venv/
 env/
+
+# 미공개 md 파일들
+AI_SYSTEM_SPEC.md
+CLAUDE.md
+MESSAGE_SPEC.md
