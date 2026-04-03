@@ -40,9 +40,10 @@ from inference import load_pipeline, predict_email
 
 # ── 설정 ─────────────────────────────────────────────────────
 RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-CONSUME_QUEUE   = "q.2ai.draft"
-PUBLISH_QUEUE   = "q.2app.draft"
-PREFETCH_COUNT  = 1
+CONSUME_QUEUE        = "q.2ai.draft"
+PUBLISH_QUEUE        = "q.2app.draft"
+PUBLISH_ROUTING_KEY  = "2app.draft"
+PREFETCH_COUNT       = 1
 
 log = get_logger("consumer.draft")
 
@@ -60,7 +61,7 @@ def _publish_error(ch, request_id: str, email_id: str,
         error_message=error_message,
         meta=ResponseMeta(elapsed_ms=elapsed_ms, source="consumer.draft"),
     )
-    publish(ch, PUBLISH_QUEUE, err.model_dump())
+    publish(ch, PUBLISH_ROUTING_KEY, err.model_dump())
 
 
 # ── 콜백 ─────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ def _callback(ch, method, _properties, body):
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         result.meta = ResponseMeta(elapsed_ms=elapsed_ms, source="consumer.draft")
 
-        publish(ch, PUBLISH_QUEUE, result.model_dump())
+        publish(ch, PUBLISH_ROUTING_KEY, result.model_dump())
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         log.info("processed",

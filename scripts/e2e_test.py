@@ -41,6 +41,9 @@ CLASSIFY_OUT = "q.2app.classify"
 DRAFT_IN     = "q.2ai.draft"
 DRAFT_OUT    = "q.2app.draft"
 
+CLASSIFY_IN_RK  = "2ai.classify"
+DRAFT_IN_RK     = "2ai.draft"
+
 _PROPS = pika.BasicProperties(
     content_type="application/json",
     delivery_mode=2,
@@ -54,16 +57,6 @@ def _connect() -> tuple:
     ch   = conn.channel()
     return conn, ch
 
-
-def _declare(ch):
-    for ex, etype in [(APP2AI_EXCHANGE, "direct"), (AI2APP_EXCHANGE, "direct")]:
-        ch.exchange_declare(exchange=ex, exchange_type=etype, durable=True)
-    for q in [CLASSIFY_IN, CLASSIFY_OUT, DRAFT_IN, DRAFT_OUT]:
-        ch.queue_declare(queue=q, durable=True)
-    ch.queue_bind(CLASSIFY_IN,  APP2AI_EXCHANGE, CLASSIFY_IN)
-    ch.queue_bind(CLASSIFY_OUT, AI2APP_EXCHANGE, CLASSIFY_OUT)
-    ch.queue_bind(DRAFT_IN,     APP2AI_EXCHANGE, DRAFT_IN)
-    ch.queue_bind(DRAFT_OUT,    AI2APP_EXCHANGE, DRAFT_OUT)
 
 
 def _publish(ch, exchange: str, routing_key: str, message: dict):
@@ -114,7 +107,7 @@ def test_classify(ch, timeout: int) -> dict | None:
 
     print(f"  Publish  → {CLASSIFY_IN}  request_id={req_id}")
     t0 = time.perf_counter()
-    _publish(ch, APP2AI_EXCHANGE, CLASSIFY_IN, payload)
+    _publish(ch, APP2AI_EXCHANGE, CLASSIFY_IN_RK, payload)
 
     resp = _poll(ch, CLASSIFY_OUT, req_id, timeout)
     elapsed = (time.perf_counter() - t0) * 1000
@@ -170,7 +163,7 @@ def test_draft(ch, timeout: int, classify_resp: dict | None = None):
 
     print(f"  Publish  → {DRAFT_IN}  request_id={req_id}  mode=generate")
     t0 = time.perf_counter()
-    _publish(ch, APP2AI_EXCHANGE, DRAFT_IN, payload)
+    _publish(ch, APP2AI_EXCHANGE, DRAFT_IN_RK, payload)
 
     resp = _poll(ch, DRAFT_OUT, req_id, timeout)
     elapsed = (time.perf_counter() - t0) * 1000
@@ -221,7 +214,7 @@ def _test_draft_validation_error(ch, domain: str, intent: str, timeout: int):
 
     print(f"\n  Publish  → {DRAFT_IN}  request_id={req_id}  mode=regenerate (no previous_draft)")
     t0 = time.perf_counter()
-    _publish(ch, APP2AI_EXCHANGE, DRAFT_IN, payload)
+    _publish(ch, APP2AI_EXCHANGE, DRAFT_IN_RK, payload)
 
     resp = _poll(ch, DRAFT_OUT, req_id, timeout)
     elapsed = (time.perf_counter() - t0) * 1000
@@ -257,8 +250,6 @@ def main():
         sys.exit(1)
 
     try:
-        _declare(ch)
-
         classify_resp = None
         if not args.draft_only:
             classify_resp = test_classify(ch, args.timeout)

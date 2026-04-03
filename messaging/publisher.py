@@ -22,7 +22,7 @@ _PROPS = pika.BasicProperties(
 log = get_logger("publisher")
 
 
-def publish(channel: pika.channel.Channel, queue_name: str, message: dict) -> None:
+def publish(channel: pika.channel.Channel, routing_key: str, message: dict) -> None:
     """
     기존 channel 을 사용해 메시지를 publish.
     consumer callback 내부에서 호출.
@@ -30,12 +30,12 @@ def publish(channel: pika.channel.Channel, queue_name: str, message: dict) -> No
     body = json.dumps(message, ensure_ascii=False).encode("utf-8")
     channel.basic_publish(
         exchange=AI2APP_EXCHANGE,
-        routing_key=queue_name,
+        routing_key=routing_key,
         body=body,
         properties=_PROPS,
     )
     log.info("published",
-             queue=queue_name,
+             routing_key=routing_key,
              request_id=message.get("request_id", "(unknown)"),
              emailId=message.get("emailId", "(unknown)"),
              status=message.get("status", "ok"))
@@ -55,8 +55,8 @@ class StandalonePublisher:
         self._ch   = self._conn.channel()
         return self
 
-    def publish(self, queue_name: str, message: dict) -> None:
-        publish(self._ch, queue_name, message)
+    def publish(self, routing_key: str, message: dict) -> None:
+        publish(self._ch, routing_key, message)
 
     def __exit__(self, *_) -> None:
         if self._conn and not self._conn.is_closed:

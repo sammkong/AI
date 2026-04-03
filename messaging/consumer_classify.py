@@ -33,9 +33,10 @@ from inference import load_pipeline, predict_email
 
 # ── 설정 ─────────────────────────────────────────────────────
 RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
-CONSUME_QUEUE   = "q.2ai.classify"
-PUBLISH_QUEUE   = "q.2app.classify"
-PREFETCH_COUNT  = 1
+CONSUME_QUEUE        = "q.2ai.classify"
+PUBLISH_QUEUE        = "q.2app.classify"
+PUBLISH_ROUTING_KEY  = "2app.classify"
+PREFETCH_COUNT       = 1
 
 log = get_logger("consumer.classify")
 
@@ -62,7 +63,7 @@ def _callback(ch, method, _properties, body):
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         result.meta = ResponseMeta(elapsed_ms=elapsed_ms, source="consumer.classify")
 
-        publish(ch, PUBLISH_QUEUE, result.model_dump())
+        publish(ch, PUBLISH_ROUTING_KEY, result.model_dump())
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         log.info("processed",
