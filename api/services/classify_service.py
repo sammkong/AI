@@ -23,7 +23,7 @@ def run_classify(payload: ClassifyRequest, pipeline: dict) -> ClassifyResponse:
     -------
     ClassifyResponse (pydantic)
     """
-    email_text = _preprocess(payload.subject, payload.body)
+    email_text = _preprocess(payload.subject, payload.body_clean)
 
     # 1. 도메인 / 인텐트 분류
     result = pipeline["predict"](
@@ -43,8 +43,8 @@ def run_classify(payload: ClassifyRequest, pipeline: dict) -> ClassifyResponse:
     )[0].tolist()
 
     return ClassifyResponse(
-        request_id=payload.request_id,
-        emailId=payload.emailId,
+        outbox_id=payload.outbox_id,
+        email_id=payload.email_id,
         classification=Classification(
             domain=result["domain"],
             intent=result["intent"],

@@ -3,7 +3,7 @@
 # ============================================================
 
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Any
 
 
 # ── 공통 메타 블록 ───────────────────────────────────────────
@@ -37,12 +37,13 @@ class ErrorResponse(BaseModel):
 
 # ── /classify ───────────────────────────────────────────────
 class ClassifyRequest(BaseModel):
-    request_id: str
-    emailId:    str
-    threadId:   Optional[str] = None
-    subject:    str
-    body:       str
-    mail_tone:  Optional[str] = "정중체"
+    outbox_id:    int
+    email_id:     int
+    sender_email: str
+    sender_name:  str
+    subject:      str
+    body_clean:   str
+    received_at:  Any   # 백엔드가 ISO 문자열 또는 배열 [year,month,day,hour,min] 로 전송
 
 
 class Classification(BaseModel):
@@ -51,8 +52,8 @@ class Classification(BaseModel):
 
 
 class ClassifyResponse(BaseModel):
-    request_id:      str
-    emailId:         str
+    outbox_id:       int
+    email_id:        int
     classification:  Classification
     summary:         str
     schedule_info:   Optional[dict] = None

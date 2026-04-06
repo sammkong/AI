@@ -32,23 +32,24 @@ from api.schemas import (
 @pytest.fixture
 def classify_input():
     return {
-        "request_id": "req-classify-001",
-        "emailId":    "email-001",
-        "threadId":   "thread-001",
-        "subject":    "납품 일정 문의",
-        "body":       "이번 달 납품 일정을 알려주시겠어요?",
-        "mail_tone":  "정중체",
+        "outbox_id":    1,
+        "email_id":     1,
+        "sender_email": "sender@example.com",
+        "sender_name":  "홍길동",
+        "subject":      "납품 일정 문의",
+        "body_clean":   "이번 달 납품 일정을 알려주시겠어요?",
+        "received_at":  "2026-04-06T10:00:00",
     }
 
 
 @pytest.fixture
 def classify_output():
     return {
-        "request_id":   "req-classify-001",
-        "emailId":      "email-001",
-        "classification": {"domain": "업무", "intent": "문의"},
-        "summary":      "납품 일정 확인 요청 이메일입니다.",
-        "schedule_info": None,
+        "outbox_id":       1,
+        "email_id":        1,
+        "classification":  {"domain": "업무", "intent": "문의"},
+        "summary":         "납품 일정 확인 요청 이메일입니다.",
+        "schedule_info":   None,
         "email_embedding": [0.1, 0.2, 0.3],
     }
 
@@ -92,23 +93,13 @@ def draft_output():
 class TestClassifyInput:
     def test_valid_message_parses(self, classify_input):
         req = ClassifyRequest(**classify_input)
-        assert req.request_id == "req-classify-001"
-        assert req.emailId    == "email-001"
-        assert req.subject    == "납품 일정 문의"
-        assert req.mail_tone  == "정중체"
+        assert req.outbox_id    == 1
+        assert req.email_id     == 1
+        assert req.subject      == "납품 일정 문의"
+        assert req.body_clean   == "이번 달 납품 일정을 알려주시겠어요?"
 
-    def test_thread_id_optional(self, classify_input):
-        classify_input.pop("threadId")
-        req = ClassifyRequest(**classify_input)
-        assert req.threadId is None
-
-    def test_mail_tone_defaults_to_formal(self, classify_input):
-        classify_input.pop("mail_tone")
-        req = ClassifyRequest(**classify_input)
-        assert req.mail_tone == "정중체"
-
-    def test_missing_request_id_raises(self, classify_input):
-        classify_input.pop("request_id")
+    def test_missing_outbox_id_raises(self, classify_input):
+        classify_input.pop("outbox_id")
         with pytest.raises(ValidationError):
             ClassifyRequest(**classify_input)
 
@@ -117,8 +108,8 @@ class TestClassifyInput:
         with pytest.raises(ValidationError):
             ClassifyRequest(**classify_input)
 
-    def test_missing_body_raises(self, classify_input):
-        classify_input.pop("body")
+    def test_missing_body_clean_raises(self, classify_input):
+        classify_input.pop("body_clean")
         with pytest.raises(ValidationError):
             ClassifyRequest(**classify_input)
 
@@ -127,7 +118,7 @@ class TestClassifyInput:
         raw  = json.dumps(classify_input)
         data = json.loads(raw)
         req  = ClassifyRequest(**data)
-        assert req.emailId == classify_input["emailId"]
+        assert req.email_id == classify_input["email_id"]
 
 
 # ── q.2app.classify 출력 검증 ────────────────────────────────
@@ -135,7 +126,7 @@ class TestClassifyInput:
 class TestClassifyOutput:
     def test_valid_response_parses(self, classify_output):
         resp = ClassifyResponse(**classify_output)
-        assert resp.request_id == "req-classify-001"
+        assert resp.outbox_id == 1
         assert resp.classification.domain == "업무"
         assert resp.classification.intent == "문의"
         assert isinstance(resp.email_embedding, list)
@@ -159,16 +150,16 @@ class TestClassifyOutput:
         resp = ClassifyResponse(**classify_output)
         assert len(resp.email_embedding) == 3
 
-    def test_request_id_preserved(self, classify_output):
-        """request_id 가 입력과 동일하게 출력에 포함되어야 함"""
+    def test_outbox_id_preserved(self, classify_output):
+        """outbox_id 가 입력과 동일하게 출력에 포함되어야 함"""
         resp = ClassifyResponse(**classify_output)
-        assert resp.request_id == classify_output["request_id"]
+        assert resp.outbox_id == classify_output["outbox_id"]
 
     def test_json_serializable(self, classify_output):
         resp = ClassifyResponse(**classify_output)
         dumped = resp.model_dump()
         raw = json.dumps(dumped)            # JSON 직렬화 가능해야 함
-        assert "request_id" in json.loads(raw)
+        assert "outbox_id" in json.loads(raw)
 
 
 # ── q.2ai.draft 입력 파싱 (generate) ────────────────────────

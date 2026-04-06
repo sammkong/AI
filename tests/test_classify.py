@@ -7,12 +7,13 @@ from unittest.mock import patch
 
 
 BASE_PAYLOAD = {
-    "request_id": "req-001",
-    "emailId": "email-001",
-    "threadId": "thread-001",
-    "subject": "세금계산서 발행 요청",
-    "body": "지난달 납품 건에 대한 세금계산서 발행 부탁드립니다.",
-    "mail_tone": "정중체",
+    "outbox_id":    1,
+    "email_id":     1,
+    "sender_email": "sender@example.com",
+    "sender_name":  "홍길동",
+    "subject":      "세금계산서 발행 요청",
+    "body_clean":   "지난달 납품 건에 대한 세금계산서 발행 부탁드립니다.",
+    "received_at":  "2026-04-06T10:00:00",
 }
 
 
@@ -35,8 +36,8 @@ class TestClassifySuccess:
 
         assert resp.status_code == 200
         data = resp.json()
-        assert data["request_id"] == "req-001"
-        assert data["emailId"] == "email-001"
+        assert data["outbox_id"] == 1
+        assert data["email_id"] == 1
         assert "classification" in data
         assert "domain" in data["classification"]
         assert "intent" in data["classification"]
@@ -75,6 +76,6 @@ class TestClassifyValidation:
         assert resp.status_code == 422
 
     def test_missing_body_returns_422(self, app_client):
-        payload = {k: v for k, v in BASE_PAYLOAD.items() if k != "body"}
+        payload = {k: v for k, v in BASE_PAYLOAD.items() if k != "body_clean"}
         resp = app_client.post("/classify", json=payload)
         assert resp.status_code == 422

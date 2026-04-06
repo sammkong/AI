@@ -11,7 +11,7 @@ import pika
 
 from messaging.structured_log import get_logger
 
-RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://admin:admin1234!@192.168.2.20:30672/")
 AI2APP_EXCHANGE = "x.ai2app.direct"
 
 _PROPS = pika.BasicProperties(
@@ -36,8 +36,8 @@ def publish(channel: pika.channel.Channel, routing_key: str, message: dict) -> N
     )
     log.info("published",
              routing_key=routing_key,
-             request_id=message.get("request_id", "(unknown)"),
-             emailId=message.get("emailId", "(unknown)"),
+             outbox_id=message.get("outbox_id", "(unknown)"),
+             email_id=message.get("email_id", "(unknown)"),
              status=message.get("status", "ok"))
 
 

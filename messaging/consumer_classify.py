@@ -32,7 +32,7 @@ from messaging.structured_log import get_logger
 from inference import load_pipeline, predict_email
 
 # ── 설정 ─────────────────────────────────────────────────────
-RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://admin:admin1234!@192.168.2.20:30672/")
 CONSUME_QUEUE        = "q.2ai.classify"
 PUBLISH_QUEUE        = "q.2app.classify"
 PUBLISH_ROUTING_KEY  = "2app.classify"
@@ -45,17 +45,17 @@ _pipeline: dict = {}
 
 # ── 콜백 ─────────────────────────────────────────────────────
 def _callback(ch, method, _properties, body):
-    request_id = "(unknown)"
-    email_id   = "(unknown)"
+    outbox_id = "(unknown)"
+    email_id  = "(unknown)"
     t0 = time.perf_counter()
 
     try:
-        data       = json.loads(body)
-        request_id = data.get("request_id", request_id)
-        email_id   = data.get("emailId",    email_id)
+        data      = json.loads(body)
+        outbox_id = data.get("outbox_id", outbox_id)
+        email_id  = data.get("email_id",  email_id)
 
         log.info("received",
-                 queue=CONSUME_QUEUE, request_id=request_id, emailId=email_id)
+                 queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id)
 
         payload = ClassifyRequest(**data)
         result  = run_classify(payload, _pipeline)
@@ -67,27 +67,27 @@ def _callback(ch, method, _properties, body):
         ch.basic_ack(delivery_tag=method.delivery_tag)
 
         log.info("processed",
-                 queue=CONSUME_QUEUE, request_id=request_id, emailId=email_id,
+                 queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
                  success=True, elapsed_ms=elapsed_ms)
 
     except json.JSONDecodeError as e:
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         log.error("json_parse_failed",
-                  queue=CONSUME_QUEUE, request_id=request_id, emailId=email_id,
+                  queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
                   success=False, elapsed_ms=elapsed_ms, error=str(e))
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     except ValidationError as e:
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         log.error("schema_validation_failed",
-                  queue=CONSUME_QUEUE, request_id=request_id, emailId=email_id,
+                  queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
                   success=False, elapsed_ms=elapsed_ms, error=str(e))
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
 
     except Exception as e:
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         log.error("processing_failed",
-                  queue=CONSUME_QUEUE, request_id=request_id, emailId=email_id,
+                  queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
                   success=False, elapsed_ms=elapsed_ms, error=str(e))
         ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
 

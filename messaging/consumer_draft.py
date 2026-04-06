@@ -39,7 +39,7 @@ from messaging.structured_log import get_logger
 from inference import load_pipeline, predict_email
 
 # ── 설정 ─────────────────────────────────────────────────────
-RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+RABBITMQ_URL    = os.getenv("RABBITMQ_URL", "amqp://admin:admin1234!@192.168.2.20:30672/")
 CONSUME_QUEUE        = "q.2ai.draft"
 PUBLISH_QUEUE        = "q.2app.draft"
 PUBLISH_ROUTING_KEY  = "2app.draft"

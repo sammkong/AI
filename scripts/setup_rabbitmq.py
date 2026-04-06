@@ -29,7 +29,7 @@ import os
 import sys
 import pika
 
-RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://guest:guest@localhost:5672/")
+RABBITMQ_URL = os.getenv("RABBITMQ_URL", "amqp://admin:admin1234!@192.168.2.20:30672/")
 
 # ── 생성할 리소스 정의 ────────────────────────────────────────
 

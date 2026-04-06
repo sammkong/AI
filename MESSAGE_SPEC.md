@@ -30,30 +30,32 @@
 
 ```json
 {
-  "request_id": "uuid-string",
-  "emailId":    "string",
-  "threadId":   "string | null",
-  "subject":    "string",
-  "body":       "string",
-  "mail_tone":  "정중체"
+  "outbox_id":    1,
+  "email_id":     123,
+  "sender_email": "sender@gmail.com",
+  "sender_name":  "홍길동",
+  "subject":      "회의 일정 안내",
+  "body_clean":   "정제된 본문...",
+  "received_at":  "2026-04-06T10:00:00"
 }
 ```
 
 | 필드 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| request_id | string | ✅ | 요청 식별자. 응답에 그대로 보존 |
-| emailId | string | ✅ | 이메일 식별자 |
-| threadId | string | ❌ | 스레드 식별자 (없으면 null) |
+| outbox_id | int | ✅ | 발신함 식별자. 응답에 그대로 보존 |
+| email_id | int | ✅ | 이메일 식별자. 응답에 그대로 보존 |
+| sender_email | string | ✅ | 발신자 이메일 |
+| sender_name | string | ✅ | 발신자 이름 |
 | subject | string | ✅ | 이메일 제목 |
-| body | string | ✅ | 이메일 본문 |
-| mail_tone | string | ❌ | 기본값: "정중체" |
+| body_clean | string | ✅ | 정제된 이메일 본문 |
+| received_at | string | ✅ | 수신 시각 (ISO 8601) |
 
 ### 2-2. 성공 응답 — `q.2app.classify`
 
 ```json
 {
-  "request_id": "uuid-string",
-  "emailId":    "string",
+  "outbox_id": 1,
+  "email_id":  123,
   "classification": {
     "domain": "string",
     "intent": "string"
@@ -70,8 +72,8 @@
 
 | 필드 | 타입 | 설명 |
 |---|---|---|
-| request_id | string | 요청의 request_id 그대로 |
-| emailId | string | 요청의 emailId 그대로 |
+| outbox_id | int | 요청의 outbox_id 그대로 |
+| email_id | int | 요청의 email_id 그대로 |
 | classification.domain | string | 분류된 도메인 |
 | classification.intent | string | 분류된 인텐트 |
 | summary | string | GPT 요약 |
