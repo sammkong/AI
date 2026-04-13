@@ -120,6 +120,19 @@ class TestClassifyInput:
         req  = ClassifyRequest(**data)
         assert req.email_id == classify_input["email_id"]
 
+    def test_camel_case_aliases_parse(self):
+        req = ClassifyRequest(
+            outboxId=7,
+            emailId=11,
+            senderEmail="sender@example.com",
+            senderName="홍길동",
+            subject="회의 일정 안내",
+            bodyClean="정제된 본문...",
+            receivedAt="2026-04-06T10:00:00",
+        )
+        assert req.outbox_id == 7
+        assert req.email_id == 11
+
 
 # ── q.2app.classify 출력 검증 ────────────────────────────────
 

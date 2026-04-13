@@ -38,12 +38,14 @@ EXCHANGES = [
     ("x.ai2app.direct", "direct"),   # AI → App
 ]
 
-# (queue_name, exchange, routing_key)
+# (queue_name, exchange, binding_key)
 QUEUES = [
-    ("q.2ai.classify",  "x.app2ai.direct", "q.2ai.classify"),
+    ("q.2ai.classify",  "x.app2ai.direct", "2ai.classify"),
     ("q.2ai.draft",     "x.app2ai.direct", "q.2ai.draft"),
-    ("q.2app.classify", "x.ai2app.direct", "q.2app.classify"),
+    ("q.2ai.training",  "x.app2ai.direct", "q.2ai.training"),
+    ("q.2app.classify", "x.ai2app.direct", "2app.classify"),
     ("q.2app.draft",    "x.ai2app.direct", "q.2app.draft"),
+    ("q.2app.training", "x.ai2app.direct", "q.2app.training"),
 ]
 
 
@@ -70,11 +72,17 @@ def main():
 
     # Queue 선언 + Binding
     print("\n── Queue 선언 + Binding ────────────────────────────")
-    for queue, exchange, routing_key in QUEUES:
+    for queue, exchange, binding_key in QUEUES:
         ch.queue_declare(queue=queue, durable=True)
-        ch.queue_bind(queue=queue, exchange=exchange, routing_key=routing_key)
+        ch.queue_bind(queue=queue, exchange=exchange, routing_key=binding_key)
         print(f"  [OK] {queue}")
-        print(f"       bind: {exchange}  routing_key={routing_key}")
+        print(f"       bind: exchange={exchange}  binding_key={binding_key}")
+
+    print("\n── Self-check 요약 ─────────────────────────────────")
+    for queue, exchange, binding_key in QUEUES:
+        print(f"  queue={queue}")
+        print(f"    exchange={exchange}")
+        print(f"    binding_key={binding_key}")
 
     conn.close()
 

@@ -2,7 +2,7 @@
 # RabbitMQ publisher — AI → App
 #
 # Exchange : x.ai2app.direct
-# Routing  : routing_key == queue name (direct exchange)
+# Routing  : 2app.classify -> q.2app.classify (pre-created binding)
 # ============================================================
 
 import json
@@ -22,6 +22,15 @@ _PROPS = pika.BasicProperties(
 log = get_logger("publisher")
 
 
+def enable_delivery_confirms(channel: pika.channel.Channel) -> None:
+    """
+    Enable broker delivery confirms so the caller can avoid acking the
+    consumed request before the result publish is actually accepted.
+    """
+    channel.confirm_delivery()
+    log.info("publisher_confirms_enabled", exchange=AI2APP_EXCHANGE)
+
+
 def publish(channel: pika.channel.Channel, routing_key: str, message: dict) -> None:
     """
     기존 channel 을 사용해 메시지를 publish.
@@ -33,8 +42,10 @@ def publish(channel: pika.channel.Channel, routing_key: str, message: dict) -> N
         routing_key=routing_key,
         body=body,
         properties=_PROPS,
+        mandatory=True,
     )
     log.info("published",
+             exchange=AI2APP_EXCHANGE,
              routing_key=routing_key,
              outbox_id=message.get("outbox_id", "(unknown)"),
              email_id=message.get("email_id", "(unknown)"),
@@ -53,6 +64,7 @@ class StandalonePublisher:
         params     = pika.URLParameters(self._url)
         self._conn = pika.BlockingConnection(params)
         self._ch   = self._conn.channel()
+        enable_delivery_confirms(self._ch)
         return self
 
     def publish(self, routing_key: str, message: dict) -> None:

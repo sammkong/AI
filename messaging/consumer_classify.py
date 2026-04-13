@@ -27,7 +27,7 @@ sys.path.insert(0, os.path.join(_ROOT, "src"))
 
 from api.schemas import ClassifyRequest, ResponseMeta
 from api.services.classify_service import run_classify
-from messaging.publisher import publish, AI2APP_EXCHANGE
+from messaging.publisher import AI2APP_EXCHANGE, enable_delivery_confirms, publish
 from messaging.structured_log import get_logger
 from inference import load_classify_pipeline, predict_email
 
@@ -43,31 +43,86 @@ log = get_logger("consumer.classify")
 _classify_pipeline: dict = {}
 
 
+def _safe_ack(ch, delivery_tag, outbox_id, email_id) -> None:
+    ch.basic_ack(delivery_tag=delivery_tag)
+    log.info("ack_sent", queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id)
+
+
+def _safe_nack(ch, delivery_tag, outbox_id, email_id, requeue: bool) -> None:
+    ch.basic_nack(delivery_tag=delivery_tag, requeue=requeue)
+    log.info(
+        "nack_sent",
+        queue=CONSUME_QUEUE,
+        outbox_id=outbox_id,
+        email_id=email_id,
+        requeue=requeue,
+    )
+
+
 # ── 콜백 ─────────────────────────────────────────────────────
-def _callback(ch, method, _properties, body):
+def _callback(ch, method, properties, body):
     outbox_id = "(unknown)"
     email_id  = "(unknown)"
     t0 = time.perf_counter()
 
     try:
+        log.info(
+            "received_message",
+            queue=CONSUME_QUEUE,
+            delivery_tag=method.delivery_tag,
+            routing_key=method.routing_key,
+            exchange=method.exchange,
+            redelivered=method.redelivered,
+            content_type=getattr(properties, "content_type", None),
+            body_size=len(body),
+        )
+
         data      = json.loads(body)
         outbox_id = data.get("outbox_id", outbox_id)
-        email_id  = data.get("email_id",  email_id)
+        email_id  = data.get("email_id", data.get("emailId", email_id))
 
-        log.info("received",
+        log.info("message_parsed",
                  queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id)
 
         payload = ClassifyRequest(**data)
+        log.info("processing_started",
+                 queue=CONSUME_QUEUE, outbox_id=payload.outbox_id, email_id=payload.email_id)
         result  = run_classify(payload, _classify_pipeline)
+        log.info("processing_succeeded",
+                 queue=CONSUME_QUEUE, outbox_id=payload.outbox_id, email_id=payload.email_id)
 
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         result.meta = ResponseMeta(elapsed_ms=elapsed_ms, source="consumer.classify")
 
-        publish(ch, PUBLISH_ROUTING_KEY, result.model_dump())
-        ch.basic_ack(delivery_tag=method.delivery_tag)
+        log.info("publish_attempt",
+                 queue=CONSUME_QUEUE,
+                 target_exchange=AI2APP_EXCHANGE,
+                 target_routing_key=PUBLISH_ROUTING_KEY,
+                 outbox_id=payload.outbox_id,
+                 email_id=payload.email_id)
+        try:
+            publish(ch, PUBLISH_ROUTING_KEY, result.model_dump())
+            log.info("publish_succeeded",
+                     queue=CONSUME_QUEUE,
+                     target_exchange=AI2APP_EXCHANGE,
+                     target_routing_key=PUBLISH_ROUTING_KEY,
+                     outbox_id=payload.outbox_id,
+                     email_id=payload.email_id)
+        except Exception as e:
+            log.error("publish_failed",
+                      queue=CONSUME_QUEUE,
+                      target_exchange=AI2APP_EXCHANGE,
+                      target_routing_key=PUBLISH_ROUTING_KEY,
+                      outbox_id=payload.outbox_id,
+                      email_id=payload.email_id,
+                      exception_type=type(e).__name__,
+                      error=str(e))
+            raise
+
+        _safe_ack(ch, method.delivery_tag, payload.outbox_id, payload.email_id)
 
         log.info("processed",
-                 queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
+                 queue=CONSUME_QUEUE, outbox_id=payload.outbox_id, email_id=payload.email_id,
                  success=True, elapsed_ms=elapsed_ms)
 
     except json.JSONDecodeError as e:
@@ -75,21 +130,22 @@ def _callback(ch, method, _properties, body):
         log.error("json_parse_failed",
                   queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
                   success=False, elapsed_ms=elapsed_ms, error=str(e))
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        _safe_nack(ch, method.delivery_tag, outbox_id, email_id, requeue=False)
 
     except ValidationError as e:
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         log.error("schema_validation_failed",
                   queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
                   success=False, elapsed_ms=elapsed_ms, error=str(e))
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=False)
+        _safe_nack(ch, method.delivery_tag, outbox_id, email_id, requeue=False)
 
     except Exception as e:
         elapsed_ms = round((time.perf_counter() - t0) * 1000, 2)
         log.error("processing_failed",
                   queue=CONSUME_QUEUE, outbox_id=outbox_id, email_id=email_id,
-                  success=False, elapsed_ms=elapsed_ms, error=str(e))
-        ch.basic_nack(delivery_tag=method.delivery_tag, requeue=True)
+                  success=False, elapsed_ms=elapsed_ms,
+                  exception_type=type(e).__name__, error=str(e))
+        _safe_nack(ch, method.delivery_tag, outbox_id, email_id, requeue=True)
 
 
 # ── 메인 ─────────────────────────────────────────────────────
@@ -105,9 +161,13 @@ def main():
         try:
             conn = pika.BlockingConnection(pika.URLParameters(RABBITMQ_URL))
             ch   = conn.channel()
+            enable_delivery_confirms(ch)
             ch.basic_qos(prefetch_count=PREFETCH_COUNT)
             ch.basic_consume(queue=CONSUME_QUEUE, on_message_callback=_callback)
-            log.info("consuming", queue=CONSUME_QUEUE)
+            log.info("consuming",
+                     queue=CONSUME_QUEUE,
+                     source_exchange="x.app2ai.direct",
+                     source_routing_key="2ai.classify")
             ch.start_consuming()
 
         except pika.exceptions.AMQPConnectionError as e:

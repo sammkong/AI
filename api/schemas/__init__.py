@@ -8,6 +8,7 @@
 from api.schemas.classify import Classification, ClassifyRequest, ClassifyResponse
 from api.schemas.common import ErrorResponse, ResponseMeta, SummarizeResponse
 from api.schemas.draft import DraftRequest, DraftResponse
+from api.schemas.training import TrainingJobRequest, TrainingJobResult, TrainingMetrics
 
 __all__ = [
     "Classification",
@@ -18,4 +19,7 @@ __all__ = [
     "ErrorResponse",
     "ResponseMeta",
     "SummarizeResponse",
+    "TrainingJobRequest",
+    "TrainingJobResult",
+    "TrainingMetrics",
 ]

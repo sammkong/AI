@@ -1,17 +1,19 @@
-from pydantic import BaseModel
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 from typing import Any, List, Optional
 
 from api.schemas.common import ResponseMeta
 
 
 class ClassifyRequest(BaseModel):
-    outbox_id: int
-    email_id: int
-    sender_email: str
-    sender_name: str
+    model_config = ConfigDict(populate_by_name=True)
+
+    outbox_id: int = Field(validation_alias=AliasChoices("outbox_id", "outboxId"))
+    email_id: int = Field(validation_alias=AliasChoices("email_id", "emailId"))
+    sender_email: str = Field(validation_alias=AliasChoices("sender_email", "senderEmail"))
+    sender_name: str = Field(validation_alias=AliasChoices("sender_name", "senderName"))
     subject: str
-    body_clean: str
-    received_at: Any
+    body_clean: str = Field(validation_alias=AliasChoices("body_clean", "bodyClean"))
+    received_at: Any = Field(validation_alias=AliasChoices("received_at", "receivedAt"))
 
 
 class Classification(BaseModel):

@@ -23,7 +23,7 @@
 
 | Queue | Exchange | Binding Key | 방향 |
 |---|---|---|---|
-| `q.2ai.classify` | x.app2ai.direct | q.2ai.classify | 백엔드 → AI |
+| `q.2ai.classify` | x.app2ai.direct | 2ai.classify | 백엔드 → AI |
 | `q.2app.classify` | x.ai2app.direct | 2app.classify | AI → 백엔드 |
 
 - 모든 Exchange / Queue: `durable=true`, `delivery_mode=2` (persistent)
@@ -33,11 +33,15 @@
 
 ## 3. 메시지 흐름
 
-```
+```text
 백엔드(Java)
-  │
-  └─ publish ──▶ q.2ai.classify ──▶ AI consumer 처리 ──▶ q.2app.classify ──▶ 백엔드 수신
-                                    (분류 + GPT 요약 + SBERT 임베딩)
+  ├─ publish exchange=x.app2ai.direct routing_key=2ai.classify
+  ├─ routed to queue=q.2ai.classify
+  ├─ AI consumer consumes queue=q.2ai.classify
+  ├─ classify processing
+  ├─ AI publish exchange=x.ai2app.direct routing_key=2app.classify
+  ├─ routed to queue=q.2app.classify
+  └─ 백엔드 consumer consumes queue=q.2app.classify
 ```
 
 > draft는 온프레미스 RAG 서버에서 처리 — AI 서버 담당 아님
@@ -46,7 +50,13 @@
 
 ## 4. classify
 
-### 4-1. 요청 — 백엔드가 `q.2ai.classify`에 publish
+### 4-1. 요청 — 백엔드가 exchange `x.app2ai.direct` 로 publish
+
+```text
+publish to exchange x.app2ai.direct with routing key 2ai.classify
+message is routed to queue q.2ai.classify
+AI consumer consumes from queue q.2ai.classify
+```
 
 ```json
 {
@@ -70,7 +80,13 @@
 | body_clean | string | ✅ | 정제된 이메일 본문 |
 | received_at | string 또는 배열 | ✅ | 수신 시각 (ISO 문자열 또는 `[year,month,day,hour,min]` 배열) |
 
-### 4-2. 응답 — AI가 `q.2app.classify`에 publish
+### 4-2. 응답 — AI가 exchange `x.ai2app.direct` 로 publish
+
+```text
+publish to exchange x.ai2app.direct with routing key 2app.classify
+message is routed to queue q.2app.classify
+Backend consumer consumes from queue q.2app.classify
+```
 
 ```json
 {
@@ -112,3 +128,14 @@
 | JSON 파싱 실패 | `nack(requeue=False)` → DLQ |
 | 스키마 검증 실패 | `nack(requeue=False)` → DLQ |
 | 일시적 오류 (API 다운 등) | `nack(requeue=True)` → 재시도 |
+| 결과 publish 실패 / unroutable | `ack` 금지, `nack(requeue=True)` |
+
+---
+
+## 6. 구분 규칙
+
+- Queue name: `q.2ai.classify`, `q.2app.classify`
+- Routing key / Binding key: `2ai.classify`, `2app.classify`
+- Consumer 는 queue 이름으로 consume 한다.
+- Publisher 는 exchange + routing key 로 publish 한다.
+- `/classify` 경로는 default exchange `""` 를 사용하지 않는다.
